@@ -22,7 +22,9 @@
  Enable or disable features
  */
 
-#define BTSPPENABLED // add BT-SPP stack, remove if unnecessary as it uses quite a bit of flash space
+#ifndef CONFIG_IDF_TARGET_ESP32S3
+#define BTSPPENABLED // add BT-SPP stack, remove if unnecessary as it uses quite a bit of flash space; ESP32-S3 has no classic BT/BR-EDR radio, so this is skipped there
+#endif
 #define BLEENABLED   // add BLE stack, remove if unnecessary as it uses quite a bit of flash space
 // #define ENABLE_OTA     // add OTA Enable here if you are using Arduino IDE, otherwise use -DENABLE_OTA in platformio
 #define HIGHER_GPS_RATES // enable 20Hz and 25Hz GPS rates, not all GPS support these rates
