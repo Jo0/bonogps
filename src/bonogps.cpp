@@ -1268,7 +1268,7 @@ void handle_menu()
 void handle_preset()
 {
   String mainpage((char *)0);
-  mainpage.reserve(1000);
+  mainpage.reserve(1600);
   mainpage += generate_html_header(true);
 #if defined(PLATFORMIO)
   #define DOCUMENTATION_CONNECTING "https://github.com/" GIT_REPO "/../../../../bonogps#connecting-to-an-app"
@@ -1288,24 +1288,31 @@ void handle_preset()
   mainpage += F("<details open><summary>Harry Lap Timer <a href='https://www.gps-laptimer.de/'>?</a></summary><article>Recommended options:<br><ul><li>GBS streaming</li><li>GSA GSV polling</li><li>10 Hz updates</li><li>Android: BT-SPP Connection</li></ul></article><article><Load options for:<p><a href='/hlt/tcpip'>iOS + Android: WiFi</a></p><p><a href='/hlt/android'>Android: BT-SPP</a></p><p>A save config and restart are recommended after enabling/disabling BT-SPP</article></details>");
 #endif
 #endif // defined(BTSPPENABLED) && defined(BLEENABLED)
+#endif // defined(BTSPPENABLED) || defined(BLEENABLED)
 
+  // racechrono main page - WiFi (TCP/IP NMEA 0183, RaceChrono DIY device) works on every board,
+  // BT-SPP is an extra option only where the chip has classic Bluetooth
+  mainpage += F("<details open><summary>RaceChrono <a target='_blank' href='https://racechrono.com/'>?</a></summary><article>Recommended options:<br><ul><li>Talker id GPS for all systems</li><li>Restrict GSV to GPS</li><li>no GBS</li><li>GSA+GSV polling every 5 sec</li><li>10 Hz updates</li></ul></article><article><p>Load options for:<p><a href='/racechrono/wifi'>WiFi: RaceChrono DIY device, NMEA 0183</a></p>");
 #ifdef BTSPPENABLED
-  // racechrono main page
-  // TODO: Add WiFi option for iOS
-  mainpage += F("<details open><summary>RaceChrono <a target='_blank' href='https://racechrono.com/'>?</a></summary><article>Recommended options:<br><ul><li>Talker id GPS for all systems</li><li>Restrict GSV to GPS</li><li>no GBS</li><li>GSA+GSV polling every 5 sec</li><li>10 Hz updates</li><li>BT-SPP Connection only</li></ul></article><article><p>Load options for:<p><a href='/racechrono/android'>Android: BT-SPP</a></p></article></details>");
+  mainpage += F("<p><a href='/racechrono/android'>Android: BT-SPP</a></p>");
+#endif
+  mainpage += F("</article></details>");
 
   // racetime main page
-  mainpage += F("<details open><summary>Racetime Lite <a target='_blank' href='https://www.racetimeapp.com/en/'>?</a></summary><article>Recommended options:<br><ul><li>Talker id GPS for all systems</li><li>GLL+VTG+RMC+GGA Enabled</li><li>no GSA GSV GBS</li><li>10 Hz updates</li><li>BT-SPP Connection only</li></ul></article><article><p>Load options for:<p><a href='/racetime/android'>Android: BT-SPP</a></p></article></details>");
+  mainpage += F("<details open><summary>Racetime Lite <a target='_blank' href='https://www.racetimeapp.com/en/'>?</a></summary><article>Recommended options:<br><ul><li>Talker id GPS for all systems</li><li>GLL+VTG+RMC+GGA Enabled</li><li>no GSA GSV GBS</li><li>10 Hz updates</li></ul></article><article><p>Load options for:<p><a href='/racetime/wifi'>WiFi: TCP/IP NMEA</a></p>");
+#ifdef BTSPPENABLED
+  mainpage += F("<p><a href='/racetime/android'>Android: BT-SPP</a></p>");
+#endif
+  mainpage += F("</article></details>");
 
   // trackaddict main page
-  mainpage += F("<details open><summary>TrackAddict <a target='_blank' href='https://www.hptuners.com/product/trackaddict-app/'>?</a></summary><article>Required options:<br><ul><li>Talker id GPS for all systems</li><li>no GSA GSV GBS </li><li>GLL Streaming</li><li>10 Hz updates</li><li>BT-SPP Connection only</li></ul></article>");
+  mainpage += F("<details open><summary>TrackAddict <a target='_blank' href='https://www.hptuners.com/product/trackaddict-app/'>?</a></summary><article>Required options:<br><ul><li>Talker id GPS for all systems</li><li>no GSA GSV GBS </li><li>GLL Streaming</li><li>10 Hz updates</li></ul></article><article><p>Load options for:<p><a href='/trackaddict/wifi'>WiFi: TCP/IP NMEA</a></p></article>");
+#ifdef BTSPPENABLED
   mainpage += input_onoff("Android: BT-SPP", "trackaddict", stored_preferences.trackaddict);
-  mainpage += F("<article><p>A save config and restart are recommended after enabling/disabling BT-SPP</p></article></details>");
+  mainpage += F("<article><p>A save config and restart are recommended after enabling/disabling BT-SPP</p></article>");
 #endif
+  mainpage += F("</details>");
 
-#else
-  String mainpage = "No settings available with this firmware options";
-#endif
   log_i("Handle load preset");
   webserver.setContentLength(CONTENT_LENGTH_UNKNOWN);
   webserver.send_P(200, html_text, WEBPORTAL_HEADER);
@@ -1727,23 +1734,22 @@ void handle_trackaddict()
   else
   {
 #ifdef SHORT_API
-    webserver.send_P(200, text_json, json_ok);
+    webserver.send_P(500, text_json, json_error);
 #else
-    String message((char *)0);
-    message.reserve(70);
-    message += F("Set TrackAddict ");
-    message += FPSTR(savecfg);
     webserver.send(200, html_text, generate_html_body(String("Error setting TrackAddict")));
 #endif
+    return;
   }
 #ifdef SHORT_API
-  webserver.send_P(500, text_json, json_error);
+  webserver.send_P(200, text_json, json_ok);
 #else
-  webserver.send(200, html_text, generate_html_body(String("Error setting TrackAddict")));
+  String message((char *)0);
+  message.reserve(70);
+  message += F("Set TrackAddict ");
+  message += choice;
+  message += FPSTR(savecfg);
+  webserver.send(200, html_text, generate_html_body(message));
 #endif
-}
-void handle_trackaddict_off()
-{
 }
 #endif
 
@@ -1817,6 +1823,101 @@ void handle_hlt_android()
   webserver.send(200, html_text, generate_html_body(message));
 }
 #endif
+
+// WiFi-based presets: these only need the TCP/IP NMEA server (always available),
+// so unlike their *_android BT-SPP counterparts above they work on any board,
+// including chips like the ESP32-S3 that have no classic Bluetooth radio.
+void handle_racechrono_wifi()
+{
+  // /racechrono/wifi
+  log_i("Setting optimal configuration for RaceChrono via WiFi TCP/IP");
+  gps_enable_racechrono();
+  if (!stored_preferences.nmeaTcpServer)
+  {
+    stored_preferences.nmeaTcpServer = true;
+    start_NMEA_server();
+  }
+#ifdef BLEENABLED
+  if (stored_preferences.ble_active)
+  {
+    stored_preferences.ble_active = false;
+    ble_stop();
+  }
+#endif
+#ifdef BTSPPENABLED
+  if (stored_preferences.btspp_active)
+  {
+    stored_preferences.btspp_active = false;
+    bt_spp_stop();
+  }
+#endif
+  String message((char *)0);
+  message.reserve(70);
+  message += F("Set optimal configuration for RaceChrono via WiFi TCP/IP:");
+  message += FPSTR(savecfg);
+  webserver.send(200, html_text, generate_html_body(message));
+}
+void handle_racetime_wifi()
+{
+  // /racetime/wifi
+  log_i("Setting optimal configuration for Racetime Lite via WiFi TCP/IP");
+  gps_enable_racetime();
+  if (!stored_preferences.nmeaTcpServer)
+  {
+    stored_preferences.nmeaTcpServer = true;
+    start_NMEA_server();
+  }
+#ifdef BLEENABLED
+  if (stored_preferences.ble_active)
+  {
+    stored_preferences.ble_active = false;
+    ble_stop();
+  }
+#endif
+#ifdef BTSPPENABLED
+  if (stored_preferences.btspp_active)
+  {
+    stored_preferences.btspp_active = false;
+    bt_spp_stop();
+  }
+#endif
+  String message((char *)0);
+  message.reserve(70);
+  message += F("Set optimal configuration for Racetime Lite via WiFi TCP/IP:");
+  message += FPSTR(savecfg);
+  webserver.send(200, html_text, generate_html_body(message));
+}
+void handle_trackaddict_wifi()
+{
+  // /trackaddict/wifi
+  log_i("Setting optimal configuration for TrackAddict via WiFi TCP/IP");
+  gps_enable_trackaddict();
+  if (!stored_preferences.nmeaTcpServer)
+  {
+    stored_preferences.nmeaTcpServer = true;
+    start_NMEA_server();
+  }
+#ifdef BLEENABLED
+  if (stored_preferences.ble_active)
+  {
+    stored_preferences.ble_active = false;
+    ble_stop();
+  }
+#endif
+#ifdef BTSPPENABLED
+  if (stored_preferences.btspp_active)
+  {
+    stored_preferences.btspp_active = false;
+    bt_spp_stop();
+  }
+#endif
+  String message((char *)0);
+  message.reserve(70);
+  message += F("Set optimal configuration for TrackAddict via WiFi TCP/IP:");
+  message += FPSTR(savecfg);
+  webserver.send(200, html_text, generate_html_body(message));
+}
+
 void handle_hlt()
 {
   String choice = webserver.pathArg(0);
@@ -2230,6 +2331,9 @@ void WebConfig_start()
   webserver.on(UriBraces("/sv/{}"), handle_svchannel);
   webserver.on(UriBraces("/tcpserver/{}"), handle_tcpserver);
   webserver.on(UriBraces("/hlt/{}"), handle_hlt);
+  webserver.on("/racechrono/wifi", handle_racechrono_wifi);
+  webserver.on("/racetime/wifi", handle_racetime_wifi);
+  webserver.on("/trackaddict/wifi", handle_trackaddict_wifi);
   webserver.on(UriBraces("/wifi/{}"), handle_wifi_mode);
   webserver.on("/restart", HTTP_GET, handle_restart);
   webserver.on("/restart", HTTP_POST, handle_restart_execute);
